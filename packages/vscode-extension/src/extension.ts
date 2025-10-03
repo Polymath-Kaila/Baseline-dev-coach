@@ -12,6 +12,7 @@ async function ensureFeatures() {
     // @ts-ignore
     features = mod.features as Record<string, WFFeature>;
   } catch {
+    // Fallback dataset for demo/testing
     features = {
       'has': { name: ':has() selector', status: { baseline: 'low', baseline_low_date: '2023-12-19' } },
       'subgrid': { name: 'Subgrid', status: { baseline: 'low', baseline_low_date: '2023-09-15' } },
@@ -24,9 +25,14 @@ async function ensureFeatures() {
 }
 
 function baselineText(level: BaselineLevel, low?: string, high?: string) {
-  if (level === 'high') return `**Baseline: Widely available** (since ${high})`;
-  if (level === 'low') return `**Baseline: Newly available** (since ${low})`;
-  return `**Baseline: Limited availability**`;
+  switch (level) {
+    case 'high':
+      return `✅ **Baseline: Widely supported**${high ? `\nSince: ${high}` : ''}`;
+    case 'low':
+      return `⚠️ **Baseline: Newly supported**${low ? `\nSince: ${low}` : ''}`;
+    default:
+      return `❌ **Baseline: Not yet in Baseline**`;
+  }
 }
 
 function featureInfo(id: string) {
@@ -46,9 +52,9 @@ function hoverMarkdown(id: string) {
   if (!info) return null;
   const md = new vscode.MarkdownString();
   md.isTrusted = true;
-  md.appendMarkdown(`### ${info.name}\n`);
-  md.appendMarkdown(`${baselineText(info.level, info.low, info.high)}\n`);
-  md.appendMarkdown(`\n*Source: \`web-features\` dataset*`);
+  md.appendMarkdown(`### ${info.name}\n\n`);
+  md.appendMarkdown(`${baselineText(info.level, info.low, info.high)}\n\n`);
+  md.appendMarkdown(`*Source: [\`web-features\`](https://www.npmjs.com/package/web-features)*`);
   return md;
 }
 
@@ -102,7 +108,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const disposable = vscode.commands.registerCommand('bdc.showInfo', async () => {
     await ensureFeatures();
-    vscode.window.showInformationMessage('Baseline Dev Coach active.');
+    vscode.window.showInformationMessage('Baseline Dev Coach is active 🚀');
   });
   context.subscriptions.push(disposable);
 }

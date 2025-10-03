@@ -1,0 +1,13 @@
+/* :has() may be Baseline Newly or Widely available depending on date */
+article:has(h2) { outline: 1px dashed; }
+
+/* Subgrid usage */
+.card {
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+/* View transitions opt-in (cross-document) */
+@view-transition {
+  navigation: auto;
+}

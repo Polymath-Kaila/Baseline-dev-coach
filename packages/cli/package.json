@@ -1,0 +1,19 @@
+{
+  "name": "@bdc/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "bdc": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "web-features": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@bdc/vscode-ext",
+  "displayName": "Baseline Dev Coach",
+  "description": "Hover tips showing Baseline status for common CSS/HTML/JS features.",
+  "version": "0.1.0",
+  "publisher": "your-publisher-id",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:css",
+    "onLanguage:html",
+    "onLanguage:javascript",
+    "onLanguage:typescript"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bdc.showInfo",
+        "title": "Baseline Dev Coach: Info"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.84.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "web-features": "^3.0.0"
+  },
+  "license": "MIT"
+}

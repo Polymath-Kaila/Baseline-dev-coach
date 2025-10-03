@@ -119,14 +119,6 @@ node packages/cli/dist/index.js --path ./demo --format console
 
 ---
 
-## Why This Can Win (Judging Fit)
-
-- **Innovation:** Brings Baseline into the tools devs use every day (IDE hovers + CI guardrails), not just docs.
-- **Usefulness:** Clear signals to **remove legacy code** and **safely adopt** modern features; actionable in PRs.
-- **MVP Completeness:** Installs, runs, and demonstrates value quickly (CLI + VS Code + CI).
-
----
-
 ## Devpost Submission Checklist
 
 -  **Public repo** with **MIT** license (this repo includes `LICENSE`).

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 type BaselineLevel = 'high' | 'low' | false;
-type WFStatus = { baseline: BaselineLevel, baseline_low_date?: string, baseline_high_date?: string };
+type WFStatus = { baseline: BaselineLevel; baseline_low_date?: string; baseline_high_date?: string };
 type WFFeature = { name: string; description?: string; status: WFStatus };
 let features: Record<string, WFFeature> | null = null;
 
@@ -9,17 +9,17 @@ async function ensureFeatures() {
   if (features) return;
   try {
     const mod = await import('web-features');
-    // @ts-ignore
+    // @ts-ignore - official export is an object keyed by id
     features = mod.features as Record<string, WFFeature>;
   } catch {
-    // Fallback dataset for demo/testing
+    // Minimal fallback so the extension still demos offline
     features = {
-      'has': { name: ':has() selector', status: { baseline: 'low', baseline_low_date: '2023-12-19' } },
-      'subgrid': { name: 'Subgrid', status: { baseline: 'low', baseline_low_date: '2023-09-15' } },
-      'dialog': { name: '<dialog> element', status: { baseline: 'high', baseline_high_date: '2024-09-14' } },
+      has: { name: ':has() selector', status: { baseline: 'low', baseline_low_date: '2023-12-19' } },
+      subgrid: { name: 'Subgrid', status: { baseline: 'low', baseline_low_date: '2023-09-15' } },
+      dialog: { name: '<dialog> element', status: { baseline: 'high', baseline_high_date: '2024-09-14' } },
       'async-clipboard': { name: 'Async Clipboard API', status: { baseline: 'high', baseline_high_date: '2022-08-01' } },
-      'share': { name: 'Web Share API', status: { baseline: 'low', baseline_low_date: '2020-01-01' } },
-      'view-transitions': { name: 'View Transitions API', status: { baseline: false } },
+      share: { name: 'Web Share API', status: { baseline: 'low', baseline_low_date: '2020-01-01' } },
+      'view-transitions': { name: 'View Transitions API', status: { baseline: false } }
     };
   }
 }
@@ -58,59 +58,125 @@ function hoverMarkdown(id: string) {
   return md;
 }
 
+/**
+ * Find substring match on current line and return a Range that includes it
+ * only if the cursor is inside that substring. Returns null otherwise.
+ */
+function matchOnLine(doc: vscode.TextDocument, pos: vscode.Position, regex: RegExp): vscode.Range | null {
+  const text = doc.lineAt(pos.line).text;
+  const m = regex.exec(text);
+  if (!m || m.index < 0) return null;
+  const start = m.index;
+  const end = m.index + m[0].length;
+  if (pos.character < start || pos.character > end) return null;
+  return new vscode.Range(new vscode.Position(pos.line, start), new vscode.Position(pos.line, end));
+}
+
+/** CSS-like hovers */
 function registerCSSHover(ctx: vscode.ExtensionContext) {
-  ctx.subscriptions.push(vscode.languages.registerHoverProvider('css', {
-    async provideHover(doc, pos) {
-      await ensureFeatures();
-      const range = doc.getWordRangeAtPosition(pos, /:has\(|subgrid|@view-transition/);
-      if (!range) return;
-      const txt = doc.getText(range);
-      if (txt.includes(':has(')) return new vscode.Hover(hoverMarkdown('has')!);
-      if (txt.includes('subgrid')) return new vscode.Hover(hoverMarkdown('subgrid')!);
-      if (txt.includes('@view-transition')) return new vscode.Hover(hoverMarkdown('view-transitions')!);
-    }
-  }));
-}
+  const cssSelectors: vscode.DocumentSelector = [
+    { language: 'css', scheme: 'file' },
+    { language: 'scss', scheme: 'file' },
+    { language: 'less', scheme: 'file' }
+  ];
 
-function registerHTMLHover(ctx: vscode.ExtensionContext) {
-  ctx.subscriptions.push(vscode.languages.registerHoverProvider('html', {
-    async provideHover(doc, pos) {
-      await ensureFeatures();
-      const range = doc.getWordRangeAtPosition(pos, /<\/?dialog/);
-      if (!range) return;
-      return new vscode.Hover(hoverMarkdown('dialog')!);
-    }
-  }));
-}
-
-function registerJSHover(ctx: vscode.ExtensionContext) {
-  const langs = ['javascript', 'typescript'];
-  for (const lang of langs) {
-    ctx.subscriptions.push(vscode.languages.registerHoverProvider(lang, {
+  ctx.subscriptions.push(
+    vscode.languages.registerHoverProvider(cssSelectors, {
       async provideHover(doc, pos) {
         await ensureFeatures();
-        const range = doc.getWordRangeAtPosition(pos, /navigator\.share|navigator\.clipboard|startViewTransition/);
-        if (!range) return;
-        const txt = doc.getText(range);
-        if (txt.includes('navigator.share')) return new vscode.Hover(hoverMarkdown('share')!);
-        if (txt.includes('navigator.clipboard')) return new vscode.Hover(hoverMarkdown('async-clipboard')!);
-        if (txt.includes('startViewTransition')) return new vscode.Hover(hoverMarkdown('view-transitions')!);
+
+        // :has(
+        let range = matchOnLine(doc, pos, /:has\(/);
+        if (range) return new vscode.Hover(hoverMarkdown('has')!, range);
+
+        // subgrid (grid-template-rows/columns: subgrid)
+        range = matchOnLine(doc, pos, /\bsubgrid\b/);
+        if (range) return new vscode.Hover(hoverMarkdown('subgrid')!, range);
+
+        // @view-transition
+        range = matchOnLine(doc, pos, /@view-transition\b/);
+        if (range) return new vscode.Hover(hoverMarkdown('view-transitions')!, range);
+
+        return undefined;
       }
-    }));
-  }
+    })
+  );
+}
+
+/** HTML-like hovers */
+function registerHTMLHover(ctx: vscode.ExtensionContext) {
+  const htmlSelectors: vscode.DocumentSelector = [
+    { language: 'html', scheme: 'file' },
+    { language: 'handlebars', scheme: 'file' }
+  ];
+
+  ctx.subscriptions.push(
+    vscode.languages.registerHoverProvider(htmlSelectors, {
+      async provideHover(doc, pos) {
+        await ensureFeatures();
+
+        // <dialog> or </dialog>
+        const range = matchOnLine(doc, pos, /<\/?\s*dialog\b/);
+        if (range) return new vscode.Hover(hoverMarkdown('dialog')!, range);
+
+        return undefined;
+      }
+    })
+  );
+}
+
+/** JS/TS(-react) hovers */
+function registerJSHover(ctx: vscode.ExtensionContext) {
+  const jsSelectors: vscode.DocumentSelector = [
+    { language: 'javascript', scheme: 'file' },
+    { language: 'typescript', scheme: 'file' },
+    { language: 'javascriptreact', scheme: 'file' },
+    { language: 'typescriptreact', scheme: 'file' }
+  ];
+
+  ctx.subscriptions.push(
+    vscode.languages.registerHoverProvider(jsSelectors, {
+      async provideHover(doc, pos) {
+        await ensureFeatures();
+
+        // navigator.share
+        let range = matchOnLine(doc, pos, /navigator\s*\.\s*share\s*\(/);
+        if (range) return new vscode.Hover(hoverMarkdown('share')!, range);
+
+        // navigator.clipboard
+        range = matchOnLine(doc, pos, /navigator\s*\.\s*clipboard\b/);
+        if (range) return new vscode.Hover(hoverMarkdown('async-clipboard')!, range);
+
+        // document.startViewTransition(
+        range = matchOnLine(doc, pos, /document\s*\.\s*startViewTransition\s*\(/);
+        if (range) return new vscode.Hover(hoverMarkdown('view-transitions')!, range);
+
+        return undefined;
+      }
+    })
+  );
 }
 
 export async function activate(context: vscode.ExtensionContext) {
   await ensureFeatures();
+
+  // Status confirmation so you know the dev host is running your latest build
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  status.text = '$(rocket) Baseline Dev Coach active';
+  status.tooltip = 'Hover over modern features to see Baseline status';
+  status.show();
+  context.subscriptions.push(status);
+
   registerCSSHover(context);
   registerHTMLHover(context);
   registerJSHover(context);
 
-  const disposable = vscode.commands.registerCommand('bdc.showInfo', async () => {
-    await ensureFeatures();
-    vscode.window.showInformationMessage('Baseline Dev Coach is active 🚀');
-  });
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('bdc.showInfo', async () => {
+      await ensureFeatures();
+      vscode.window.showInformationMessage('Baseline Dev Coach is active 🚀');
+    })
+  );
 }
 
 export function deactivate() {}

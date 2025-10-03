@@ -1,0 +1,14 @@
+{
+  "name": "baseline-dev-coach",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Baseline Dev Coach: a CLI + VS Code extension to spot non\u2011Baseline web features and offer fallbacks",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run -w @bdc/cli build && npm run -w @bdc/vscode-ext build",
+    "prepare": "npm run build"
+  }
+}
